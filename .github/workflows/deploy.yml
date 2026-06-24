@@ -1,40 +1,38 @@
-name: Deploy til Azure Static Web App
+name: Deploy til GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - name: Sjekk ut kode
         uses: actions/checkout@v4
 
-      - name: Logg inn i Azure (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
 
-      - name: Hent deployment token
-        run: |
-          TOKEN=$(az staticwebapp secrets list \
-            --name ski-it-tjenester \
-            --resource-group rg-ski-it \
-            --query properties.apiKey \
-            -o tsv)
-          echo "SWA_TOKEN=$TOKEN" >> $GITHUB_ENV
-
-      - name: Deploy til Static Web App
-        uses: Azure/static-web-apps-deploy@v1
+      - name: Last opp statiske filer
+        uses: actions/upload-pages-artifact@v3
         with:
-          azure_static_web_apps_api_token: ${{ env.SWA_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          skip_app_build: true
-          app_location: /
-          output_location: /
+          path: .
+
+      - name: Deploy til GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
